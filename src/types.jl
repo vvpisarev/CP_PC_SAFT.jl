@@ -1,3 +1,8 @@
+using CubicEoS: NothingOrT
+import CubicEoS: AbstractEoSComponent, AbstractEoSMixture, AbstractEoSThermoBuffer
+
+import CubicEoS: name, components, describe, carbon_number, molar_mass
+
 struct CPPCSAFTComponent{T<:Number} <: CubicEoS.AbstractEoSComponent
     # meta information
     name::String

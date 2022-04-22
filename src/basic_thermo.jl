@@ -1,7 +1,8 @@
 #=
 Basic thermodynamic properties
 =#
-using LinearAlgebra
+
+import CubicEoS: ncomponents, pressure, wilson_saturation_pressure
 
 @inline ncomponents(mix::CPPCSAFTMixture) = length(mix.components)
 @inline Base.length(mix::CPPCSAFTMixture) = length(mix.components)
@@ -59,23 +60,6 @@ function wilson_saturation_pressure(substance::CPPCSAFTComponent, RT::Real)
     return wilson_saturation_pressure(
         substance.Pc, substance.RTc, substance.acentric_factor, RT
     )
-end
-
-"""
-    wilson_saturation_pressure(Pc::Real, RTc::Real, acentric_factor::Real, RT::Real)
-
-Approximate saturation pressure at `RT` using Wilson correlation.
-
-# Arguments
-- `Pc::Real` - critical pressure
-- `RTc::Real` - gas constant * critical temperature
-- `acentric_factor::Real` - acentric factor
-- `RT::Real` - gas constant * temperature
-
-Reference: Brusilovsky2002 [p 272, eq 5.4], Mikyska2010 DOI 10.1002/aic.12387 [Algorithm step 1]
-"""
-function wilson_saturation_pressure(Pc::Real, RTc::Real, acentric_factor::Real, RT::Real)
-    return Pc * exp(5.373 * (1.0 + acentric_factor) * (1.0 - RTc / RT))
 end
 
 """

@@ -1,5 +1,3 @@
-using LinearAlgebra
-
 """
 Result of Newton's iterations.
 Contain `converged::Bool` flag, the minimum `argument::Vector`,

@@ -2,8 +2,13 @@ module CP_PC_SAFT
 
 import CubicEoS
 export CPPCSAFTComponent, CPPCSAFTMixture
-export name, acentric_factor, molar_mass, carbon_number, pressure
-export describe
+
+using LinearAlgebra
+
+using CubicEoS: load
+export load
+
+import CubicEoS: log_c_activity, log_c_activity!, log_c_activity_wj, log_c_activity_wj!
 
 include("constants.jl")
 include("types.jl")
