@@ -1,8 +1,8 @@
-components(m::CPPCSAFTMixture) = m.components
-name(m::CPPCSAFTMixture) = join(map(name, components(m)), " + ")
-describe(m::CPPCSAFTMixture) = Dict{String,Any}("noparameters" => NaN)
+# CubicEoS.components(m::CPPCSAFTMixture) = m.components
+# CubicEoS.name(m::CPPCSAFTMixture) = join(map(name, components(m)), " + ")
+# CubicEoS.describe(m::CPPCSAFTMixture) = Dict{String,Any}("noparameters" => NaN)
 
-function describe(x::CPPCSAFTComponent)
+function CubicEoS.describe(x::CPPCSAFTComponent)
     return Dict{String,Any}(
         "data structure" => repr(x),
         "name" => name(x),

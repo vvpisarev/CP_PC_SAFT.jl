@@ -1,4 +1,5 @@
-using CubicEoS: NothingOrT
+NothingOrT{T} = Union{Nothing,T}
+
 import CubicEoS: AbstractEoSComponent, AbstractEoSMixture, AbstractEoSThermoBuffer
 
 import CubicEoS: name, components, describe, carbon_number, molar_mass
@@ -65,7 +66,7 @@ end
 Mixture
 =#
 
-struct CPPCSAFTMixture{T} <: CubicEoS.AbstractEoSMixture
+struct CPPCSAFTMixture{T} <: CubicEoS.AbstractEoSMixture{T}
     components::Vector{CPPCSAFTComponent{T}}
 
     kij::Matrix{T} # binary interaction coefficient
@@ -119,13 +120,5 @@ function SAFTThermoBuffer(mix::CPPCSAFTMixture{Tm}, nmol::AbstractVector{Tn}) wh
     return SAFTThermoBuffer{T}(nc)
 end
 
-"""
-    thermo_buffer(mix[, nmol])
-
-Create a buffer for intermediate calculations of mixture thermodynamic properties.
-
-See also: [`pressure`](@ref), [`log_c_activity`](@ref), [`log_c_activity!`](@ref),
-[`log_c_activity_wj`](@ref), [`log_c_activity_wj!`](@ref)
-"""
-thermo_buffer(mix::CPPCSAFTMixture) = SAFTThermoBuffer(mix)
-thermo_buffer(mix::CPPCSAFTMixture, nmol) = SAFTThermoBuffer(mix, nmol)
+CubicEoS.thermo_buffer(mix::CPPCSAFTMixture) = SAFTThermoBuffer(mix)
+CubicEoS.thermo_buffer(mix::CPPCSAFTMixture, nmol) = SAFTThermoBuffer(mix, nmol)

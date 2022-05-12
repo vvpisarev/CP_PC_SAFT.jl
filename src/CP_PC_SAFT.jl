@@ -5,10 +5,8 @@ export CPPCSAFTComponent, CPPCSAFTMixture
 
 using LinearAlgebra
 
-using CubicEoS: load
-export load
-
 import CubicEoS: log_c_activity, log_c_activity!, log_c_activity_wj, log_c_activity_wj!
+using CubicEoS: thermo_buffer
 
 include("constants.jl")
 include("types.jl")

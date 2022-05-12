@@ -1,5 +1,7 @@
 using CubicEoSDatabase
 
+const DBROOT = joinpath(abspath(@__DIR__), "../data")
+
 """
     load(MBWREoSComponent; name::AbstractString[, component_dbs])
 
@@ -21,8 +23,8 @@ function CubicEoS.load(
     ::Type{<:CPPCSAFTComponent};
     name::AbstractString,
     component_dbs=(
-        ComponentDatabase("data/nist.csv"),
-        ComponentDatabase("data/polishuk.csv"),
+        ComponentDatabase(joinpath(DBROOT, "nist.csv")),
+        ComponentDatabase(joinpath(DBROOT, "polishuk.csv")),
     )
 )
     comp_properties = foldl(
@@ -117,13 +119,13 @@ function CubicEoS.load(
     ::Type{<:CPPCSAFTMixture};
     names,
     component_dbs=(
-        ComponentDatabase("data/nist.csv"),
-        ComponentDatabase("data/polishuk.csv"),
+        ComponentDatabase(joinpath(DBROOT, "nist.csv")),
+        ComponentDatabase(joinpath(DBROOT, "polishuk.csv")),
     ),
     mix_eos_db::MixtureDatabase=Data.brusilovsky_mix_adjusted(),
 )
     components = [
-        load(
+        CubicEoS.load(
             CPPCSAFTComponent;
             name,
             component_dbs,
