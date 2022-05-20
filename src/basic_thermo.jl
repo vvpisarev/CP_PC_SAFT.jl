@@ -2,10 +2,8 @@ function CubicEoS.pressure(substance::CPPCSAFTComponent, nmol::Real, V::Real, RT
     return pressure(substance, V / nmol, RT)
 end
 
-function CubicEoS.wilson_saturation_pressure(substance::CPPCSAFTComponent, RT::Real)
-    return wilson_saturation_pressure(
-        substance.Pc, substance.RTc, substance.acentric_factor, RT
-    )
+function CubicEoS.wilson_saturation_pressure(c::CPPCSAFTComponent, RT::Real)
+    return wilson_saturation_pressure(c.Pc, c.RTc, c.acentric_factor, RT)
 end
 
 function CubicEoS.pressure(

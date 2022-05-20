@@ -1,11 +1,7 @@
-function exc_helmholtz(
-    mix::CPPCSAFTMixture{T},
-    nmol,
-    vol,
-    RT;
-    buf = thermo_buffer(mix, nmol)
+function exc_helmholtz(mix::CPPCSAFTMixture{T}, nmol, vol, RT;
+    buf=thermo_buffer(mix, nmol),
 ) where {T}
-    Tx = RT / CubicEoS.CubicEoS.GAS_CONSTANT_SI
+    Tx = RT / CubicEoS.GAS_CONSTANT_SI
     ntotal = sum(nmol)
     mmix, epsk, sigma = m_eps_sigma(mix, nmol)
     θ = cp_pc_saft_theta(Tx, epsk)
@@ -20,10 +16,10 @@ function exc_helmholtz(
 end
 
 function m_eps_sigma(mix, nmol)
-    ntotal = sum(nmol)
-    nc = length(mix.components)
-    comp = mix.components
-    mmix = sum(nmol[i] * mix[i].mchain for i in eachindex(nmol))
+    nc = ncomponents(mix)
+    comp = components(mix)
+
+    mmix = sum(mol * comp.mchain for (mol, comp) in zip(nmol, comp))
     epsk = zero(mmix)
     sigma = zero(mmix)
     for j in 1:nc, i in 1:nc
@@ -38,7 +34,7 @@ function m_eps_sigma(mix, nmol)
     end
     epsk /= sigma
     sigma = cbrt(sigma / mmix^2)
-    mmix /= ntotal
+    mmix /= sum(nmol)
     return (; mmix, epsk, sigma)
 end
 
@@ -48,13 +44,14 @@ function cp_pc_saft_theta(Tx, epsk)
 end
 
 function zeta_d(mix, nmol, vol, Tx; buf = similar(nmol))
-    comp = mix.components
-    z0 = z1 = z2 = z3 = zero(comp[1].mchain + nmol[1] + vol + Tx)
-    for (i, c) in enumerate(comp)
-        mchain = c.mchain
-        θ = cp_pc_saft_theta(Tx, c.epsk)
-        di = θ * c.sigma
-        a = nmol[i] * mchain
+    comp = components(mix)
+    z0 = z1 = z2 = z3 = zero(first(comp).mchain + first(nmol) + vol + Tx)
+
+    for (nmoli, ci, bufind) in zip(nmol, comp, eachindex(buf))
+        mchain = ci.mchain
+        θ = cp_pc_saft_theta(Tx, ci.epsk)
+        di = θ * ci.sigma
+        a = nmoli * mchain
         z0 += a
         a *= di
         z1 += a
@@ -62,7 +59,7 @@ function zeta_d(mix, nmol, vol, Tx; buf = similar(nmol))
         z2 += a
         a *= di
         z3 += a
-        buf[i] = di
+        buf[bufind] = di
     end
     prefactor = π * AVOGADRO / (6e30 * vol)
     return (
@@ -70,16 +67,18 @@ function zeta_d(mix, nmol, vol, Tx; buf = similar(nmol))
         zeta1 = z1 * prefactor,
         zeta2 = z2 * prefactor,
         zeta3 = z3 * prefactor,
-        ds = buf
+        ds = buf,
     )
 end
 
 function ahsm_mix(RT, mmix, theta, zeta0, zeta1, zeta2, zeta3)
     imz3 = 1 - zeta3
-    Ahs = RT * mmix / zeta0 *
+    Ahs = (
+        RT * mmix / zeta0 *
         (3 * zeta1 * zeta2 / imz3 + zeta2^3 / (zeta3 * imz3^2) +
         (zeta2^3 / zeta3^2 - zeta0) * log1p(-zeta3)) *
         sqrt(imz3 / (1 - zeta3 / theta^3))
+    )
     return Ahs
 end
 
