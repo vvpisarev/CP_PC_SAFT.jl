@@ -6,7 +6,9 @@ function exc_helmholtz(mix::CPPCSAFTMixture, nmol, vol, RT;
 
     mmix, epsk, sigma = m_eps_sigma(mix, nmol)
     θ = cp_pc_saft_theta(Tx, epsk)
-    ζ₀, ζ₁, ζ₂, ζ₃, di = zeta_d(mix, nmol, vol, Tx; buf=buf.vec1)
+
+    # WARN: `buf.vec1` is reserved for `di` only!
+    ζ₀, ζ₁, ζ₂, ζ₃, di = zetas_d!(buf.vec1, mix, nmol, vol, Tx)
 
     Ahs = ahsm_mix(RT, mmix, θ, ζ₀, ζ₁, ζ₂, ζ₃) * ntotal
     Achain = achain_mix(mix, nmol, RT, di, ζ₂, ζ₃)
@@ -53,13 +55,14 @@ function cp_pc_saft_theta(Tx, epsk)
     return (1 + 0.2977 * Tr) / (1 + Tr * (0.33163 + Tr * 0.0010477))
 end
 
-function zeta_d(mix, nmol, vol, Tx; buf = similar(nmol))
+function zetas_d!(ds, mix, nmol, vol, temperature)
+    # Polishuk, 2014, eq. 12 and definition d = θσ
     comp = components(mix)
-    z0 = z1 = z2 = z3 = zero(first(comp).mchain + first(nmol) + vol + Tx)
+    z0 = z1 = z2 = z3 = zero(first(comp).mchain + first(nmol) + vol + temperature)
 
-    for (nmoli, ci, bufind) in zip(nmol, comp, eachindex(buf))
+    for (nmoli, ci, i) in zip(nmol, comp, eachindex(ds))
         mchain = ci.mchain
-        θ = cp_pc_saft_theta(Tx, ci.epsk)
+        θ = cp_pc_saft_theta(temperature, ci.epsk)
         di = θ * ci.sigma
         a = nmoli * mchain
         z0 += a
@@ -69,15 +72,16 @@ function zeta_d(mix, nmol, vol, Tx; buf = similar(nmol))
         z2 += a
         a *= di
         z3 += a
-        buf[bufind] = di
+        ds[i] = di
     end
+    # WARN: I'm not sure what's going on with molfrac and moles here
     prefactor = π * AVOGADRO / (6e30 * vol)
     return (
         zeta0 = z0 * prefactor,
         zeta1 = z1 * prefactor,
         zeta2 = z2 * prefactor,
         zeta3 = z3 * prefactor,
-        ds = buf,
+        ds = ds,
     )
 end
 
