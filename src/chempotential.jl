@@ -1,39 +1,48 @@
-function exc_helmholtz(mix::CPPCSAFTMixture{T}, nmol, vol, RT;
+function exc_helmholtz(mix::CPPCSAFTMixture, nmol, vol, RT;
     buf=thermo_buffer(mix, nmol),
-) where {T}
+)
     Tx = RT / CubicEoS.GAS_CONSTANT_SI
     ntotal = sum(nmol)
+
     mmix, epsk, sigma = m_eps_sigma(mix, nmol)
     θ = cp_pc_saft_theta(Tx, epsk)
-    zeta0, zeta1, zeta2, zeta3, di = zeta_d(mix, nmol, vol, Tx; buf=buf.vec1)
-    Ahs = ahsm_mix(RT, mmix, θ, zeta0, zeta1, zeta2, zeta3) * ntotal
-    Achain = achain_mix(mix, nmol, RT, di, zeta2, zeta3)
+    ζ₀, ζ₁, ζ₂, ζ₃, di = zeta_d(mix, nmol, vol, Tx; buf=buf.vec1)
+
+    Ahs = ahsm_mix(RT, mmix, θ, ζ₀, ζ₁, ζ₂, ζ₃) * ntotal
+    Achain = achain_mix(mix, nmol, RT, di, ζ₂, ζ₃)
 
     aterms, bterms = cp_pc_saft_Iterms(CP_PC_SAFT_ACOEFF, CP_PC_SAFT_BCOEFF, mmix)
-    Adisp = adispm_mix(vol / ntotal, Tx, mmix, epsk, sigma, zeta3, aterms, bterms) * ntotal
+    Adisp = adispm_mix(vol / ntotal, Tx, mmix, epsk, sigma, ζ₃, aterms, bterms) * ntotal
 
     return Ahs + Achain + Adisp
 end
 
 function m_eps_sigma(mix, nmol)
+    # Polishuk, 2014, eqs. 15-17
+
     nc = ncomponents(mix)
     comp = components(mix)
 
     mmix = sum(mol * comp.mchain for (mol, comp) in zip(nmol, comp))
     epsk = zero(mmix)
     sigma = zero(mmix)
-    for j in 1:nc, i in 1:nc
-        ci, cj = comp[i], comp[j]
+
+    for (cj, nmolj, j) in zip(comp, nmol, axes(mix.kij, 2)),
+        (ci, nmoli, i) in zip(comp, nmol, axes(mix.kij, 1))
+
         mi, ei, si = ci.mchain, ci.epsk, ci.sigma
         mj, ej, sj = cj.mchain, cj.epsk, cj.sigma
-        eij = (1 - mix.kij[i,j]) * sqrt(ei) * sqrt(ej)
-        sij = (si + sj) / 2
-        a = nmol[i] * nmol[j] * mi * mj * sij^3
+
+        sij = (si + sj) / 2  # eq. 20
+        a = nmoli * nmolj * mi * mj * sij^3  # common factor
+
         sigma += a
+
+        eij = (1 - mix.kij[i,j]) * sqrt(ei) * sqrt(ej)  # eq. 18
         epsk += a * eij
     end
     epsk /= sigma
-    sigma = cbrt(sigma / mmix^2)
+    sigma = cbrt(sigma / mmix^2)  # Must be before mmix/sum(nmol)
     mmix /= sum(nmol)
     return (; mmix, epsk, sigma)
 end
