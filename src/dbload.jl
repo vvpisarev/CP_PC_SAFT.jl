@@ -82,14 +82,13 @@ function CubicEoS.load(::Type{<:CPPCSAFTMixture};
         ComponentDatabase(joinpath(DBROOT, "nist.csv")),
         ComponentDatabase(joinpath(DBROOT, "polishuk.csv")),
     ),
-    mix_eos_db::MixtureDatabase=Data.brusilovsky_mix_adjusted(),
+    mix_eos_db=nothing,
 )
     components = map(names) do name
         CubicEoS.load(CPPCSAFTComponent; name=name, component_dbs=component_dbs)
     end
-    corrections = getmatrix(mix_eos_db, names)
-    return CPPCSAFTMixture(;
-        components=collect(components),
-        corrections...
-    )
+
+    @warn "Correction matrix for CP-PC-SAFT is zero matrix."
+
+    return CPPCSAFTMixture(collect(components))
 end

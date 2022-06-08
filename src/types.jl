@@ -49,24 +49,15 @@ end
 
 CPPCSAFTComponent(; x...) = CPPCSAFTComponent{Float64}(; x...)
 
-#=
-Mixture
-=#
 
 struct CPPCSAFTMixture{T} <: CubicEoS.AbstractEoSMixture{T}
     components::Vector{CPPCSAFTComponent{T}}
-
     kij::Matrix{T} # binary interaction coefficient
 
-    function CPPCSAFTMixture(
-        ;
-        components::AbstractVector{CPPCSAFTComponent{T}},
-        kij::Union{Nothing,AbstractMatrix}=nothing,
-        kw...
+    function CPPCSAFTMixture(components::AbstractVector{CPPCSAFTComponent{T}};
+        kij::AbstractMatrix=zeros(T, length(components), length(components)),
     ) where {T}
-        nc = length(components)
-        kmatr = isnothing(kij) ? zeros(T, nc, nc) : kij
-        return new{T}(components, kmatr)
+        return new{T}(components, kij)
     end
 end
 
