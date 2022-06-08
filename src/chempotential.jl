@@ -39,6 +39,7 @@ function m_eps_sigma(mix, nmol)
 end
 
 function cp_pc_saft_theta(Tx, epsk)
+    # Polishuk, 2014, eq. 9
     Tr = Tx / epsk
     return (1 + 0.2977 * Tr) / (1 + Tr * (0.33163 + Tr * 0.0010477))
 end
@@ -71,13 +72,17 @@ function zeta_d(mix, nmol, vol, Tx; buf = similar(nmol))
     )
 end
 
-function ahsm_mix(RT, mmix, theta, zeta0, zeta1, zeta2, zeta3)
-    imz3 = 1 - zeta3
+function ahsm_mix(RT, mmix, θ, ζ₀, ζ₁, ζ₂, ζ₃)
+    # Polishuk 2014, Eq. 11
+    # In sqrt( ... ), definition of d = σ θ is used
+    onemζ₃ = 1 - ζ₃
     Ahs = (
-        RT * mmix / zeta0 *
-        (3 * zeta1 * zeta2 / imz3 + zeta2^3 / (zeta3 * imz3^2) +
-        (zeta2^3 / zeta3^2 - zeta0) * log1p(-zeta3)) *
-        sqrt(imz3 / (1 - zeta3 / theta^3))
+        RT * mmix / ζ₀
+        * (
+            3 * ζ₁ * ζ₂ / onemζ₃
+            + ζ₂^3 / (ζ₃ * onemζ₃^2)
+            + (ζ₂^3 / ζ₃^2 - ζ₀) * log1p(-ζ₃)
+        ) * sqrt(onemζ₃ / (1 - ζ₃ / θ^3))
     )
     return Ahs
 end
