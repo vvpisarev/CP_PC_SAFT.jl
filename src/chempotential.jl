@@ -87,21 +87,33 @@ function ahsm_mix(RT, mmix, θ, ζ₀, ζ₁, ζ₂, ζ₃)
     return Ahs
 end
 
-function achain_mix(mix, nmol, RT, ds, zeta2, zeta3)
+function achain_mix(mix, nmol, RT, ds, ζ₂, ζ₃)
+    # Polishuk 2014, eq. 13
     comp = components(mix)
-    Achain = RT * sum(
-        nmol[i] * nmol[j] * (1 - (comp[i].mchain + comp[j].mchain)/2) *
-        log(rdfc(ds, i, j, zeta2, zeta3)) for i in eachindex(ds) for j in eachindex(ds)
-    )
-    Achain /= sum(nmol)
+
+    # TODO: zero(?)
+    Achain = 0.0
+    for (dᵢ, compᵢ, nmolᵢ) in zip(ds, comp, nmol),
+        (dⱼ, compⱼ, nmolⱼ) in zip(ds, comp, nmol)
+        radial = log(rdfc(dᵢ, dⱼ, ζ₂, ζ₃))
+
+        # Polishuk 2014, eq. 19
+        # TODO: correction is zero: perhaps need to add the matrix to `mix` definition
+        mij = (compᵢ.mchain + compⱼ.mchain)/2
+
+        Achain += nmolᵢ * nmolⱼ * (1 - mij) * radial
+    end
+    Achain /= sum(nmol)  # In the cycle the moles are squared
+    Achain *= RT
+
     return Achain
 end
 
-function rdfc(ds, i, j, zeta2, zeta3)
-    imz3 = 1 - zeta3
-    di, dj = ds[i], ds[j]
-    dm = di * dj * zeta2 / (imz3 * (di + dj))
-    return (1 + dm * (3 + 2 * dm))/ imz3
+function rdfc(di, dj, ζ₂, ζ₃)
+    # Polushuk, 2014, eq. 14
+    onemζ₃ = 1 - ζ₃
+    dm = di * dj * ζ₂ / (onemζ₃ * (di + dj))
+    return (1 + dm * (3 + 2 * dm)) / onemζ₃
 end
 
 function cp_pc_saft_Iterms(a, b, m)
