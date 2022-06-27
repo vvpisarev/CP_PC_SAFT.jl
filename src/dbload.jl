@@ -1,12 +1,11 @@
-const DBROOT = joinpath(abspath(@__DIR__), "../data")
+const _DBROOT = joinpath(abspath(@__DIR__), "../data")
+const SAFT_PHYSICS_PARAMS = ComponentDatabase(joinpath(_DBROOT, "nist.csv"))
+const SAFT_EOS_PARAMS = ComponentDatabase(joinpath(_DBROOT, "polishuk.csv"))
 
 function CubicEoS.load(
     ::Type{<:CPPCSAFTComponent};
     name::AbstractString,
-    component_dbs=(
-        ComponentDatabase(joinpath(DBROOT, "nist.csv")),
-        ComponentDatabase(joinpath(DBROOT, "polishuk.csv")),
-    ),
+    component_dbs=(SAFT_PHYSICS_PARAMS, SAFT_EOS_PARAMS),
 )
     comp_properties = foldl(
         (dict, db) -> merge!(dict, getentry(db, name)),
@@ -78,10 +77,7 @@ end
 
 function CubicEoS.load(::Type{<:CPPCSAFTMixture};
     names,
-    component_dbs=(
-        ComponentDatabase(joinpath(DBROOT, "nist.csv")),
-        ComponentDatabase(joinpath(DBROOT, "polishuk.csv")),
-    ),
+    component_dbs=(SAFT_PHYSICS_PARAMS, SAFT_EOS_PARAMS),
     mix_eos_db=nothing,
 )
     components = map(names) do name
