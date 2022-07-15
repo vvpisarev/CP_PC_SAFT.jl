@@ -8,3 +8,9 @@ CubicEoS = "0772a1fa-d924-41f2-9f07-889679823dc5"
 CubicEoSDatabase = "8742253c-1987-415f-b31d-1ec9670d9ed7"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

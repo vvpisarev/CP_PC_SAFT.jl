@@ -1,65 +1,70 @@
-using ForwardDiff
-#=
-Functions to compute chemical potential-related characteristics
-=#
-
-function exc_helmholtz(
-    mix::CPPCSAFTMixture{T},
-    nmol,
-    vol,
-    RT;
-    buf = thermo_buffer(mix, nmol)
-) where {T}
-    Tx = RT / GAS_CONSTANT_SI
+function exc_helmholtz(mix::CPPCSAFTMixture, nmol, vol, RT;
+    buf=thermo_buffer(mix, nmol),
+)
+    Tx = RT / CubicEoS.GAS_CONSTANT_SI
     ntotal = sum(nmol)
+
     mmix, epsk, sigma = m_eps_sigma(mix, nmol)
     θ = cp_pc_saft_theta(Tx, epsk)
-    zeta0, zeta1, zeta2, zeta3, di = zeta_d(mix, nmol, vol, Tx; buf=buf.vec1)
-    Ahs = ahsm_mix(RT, mmix, θ, zeta0, zeta1, zeta2, zeta3) * ntotal
-    Achain = achain_mix(mix, nmol, RT, di, zeta2, zeta3)
+
+    # WARN: `buf.vec1` is reserved for `di` only!
+    ζ₀, ζ₁, ζ₂, ζ₃, di = zetas_d!(buf.vec1, mix, nmol, vol, Tx)
+
+    Ahs = ahsm_mix(RT, mmix, θ, ζ₀, ζ₁, ζ₂, ζ₃) * ntotal
+    Achain = achain_mix(mix, nmol, RT, di, ζ₂, ζ₃)
 
     aterms, bterms = cp_pc_saft_Iterms(CP_PC_SAFT_ACOEFF, CP_PC_SAFT_BCOEFF, mmix)
-    Adisp = adispm_mix(vol / ntotal, Tx, mmix, epsk, sigma, zeta3, aterms, bterms) * ntotal
+    Adisp = adispm_mix(vol / ntotal, Tx, mmix, epsk, sigma, ζ₃, aterms, bterms) * ntotal
 
     return Ahs + Achain + Adisp
 end
 
 function m_eps_sigma(mix, nmol)
-    ntotal = sum(nmol)
-    nc = length(mix.components)
-    comp = mix.components
-    mmix = sum(nmol[i] * mix[i].mchain for i in eachindex(nmol))
+    # Polishuk, 2014, eqs. 15-17
+
+    nc = ncomponents(mix)
+    comp = components(mix)
+
+    mmix = sum(mol * comp.mchain for (mol, comp) in zip(nmol, comp))
     epsk = zero(mmix)
     sigma = zero(mmix)
-    for j in 1:nc, i in 1:nc
-        ci, cj = comp[i], comp[j]
+
+    for (cj, nmolj, j) in zip(comp, nmol, axes(mix.kij, 2)),
+        (ci, nmoli, i) in zip(comp, nmol, axes(mix.kij, 1))
+
         mi, ei, si = ci.mchain, ci.epsk, ci.sigma
         mj, ej, sj = cj.mchain, cj.epsk, cj.sigma
-        eij = (1 - mix.kij[i,j]) * sqrt(ei) * sqrt(ej)
-        sij = (si + sj) / 2
-        a = nmol[i] * nmol[j] * mi * mj * sij^3
+
+        sij = (si + sj) / 2  # eq. 20
+        a = nmoli * nmolj * mi * mj * sij^3  # common factor
+
         sigma += a
+
+        eij = (1 - mix.kij[i,j]) * sqrt(ei) * sqrt(ej)  # eq. 18
         epsk += a * eij
     end
     epsk /= sigma
-    sigma = cbrt(sigma / mmix^2)
-    mmix /= ntotal
+    sigma = cbrt(sigma / mmix^2)  # Must be before mmix/sum(nmol)
+    mmix /= sum(nmol)
     return (; mmix, epsk, sigma)
 end
 
 function cp_pc_saft_theta(Tx, epsk)
+    # Polishuk, 2014, eq. 9
     Tr = Tx / epsk
     return (1 + 0.2977 * Tr) / (1 + Tr * (0.33163 + Tr * 0.0010477))
 end
 
-function zeta_d(mix, nmol, vol, Tx; buf = similar(nmol))
-    comp = mix.components
-    z0 = z1 = z2 = z3 = zero(comp[1].mchain + nmol[1] + vol + Tx)
-    for (i, c) in enumerate(comp)
-        mchain = c.mchain
-        θ = cp_pc_saft_theta(Tx, c.epsk)
-        di = θ * c.sigma
-        a = nmol[i] * mchain
+function zetas_d!(ds, mix, nmol, vol, temperature)
+    # Polishuk, 2014, eq. 12 and definition d = θσ
+    comp = components(mix)
+    z0 = z1 = z2 = z3 = zero(first(comp).mchain + first(nmol) + vol + temperature)
+
+    for (nmoli, ci, i) in zip(nmol, comp, eachindex(ds))
+        mchain = ci.mchain
+        θ = cp_pc_saft_theta(temperature, ci.epsk)
+        di = θ * ci.sigma
+        a = nmoli * mchain
         z0 += a
         a *= di
         z1 += a
@@ -67,42 +72,61 @@ function zeta_d(mix, nmol, vol, Tx; buf = similar(nmol))
         z2 += a
         a *= di
         z3 += a
-        buf[i] = di
+        ds[i] = di
     end
+    # WARN: I'm not sure what's going on with molfrac and moles here
     prefactor = π * AVOGADRO / (6e30 * vol)
     return (
         zeta0 = z0 * prefactor,
         zeta1 = z1 * prefactor,
         zeta2 = z2 * prefactor,
         zeta3 = z3 * prefactor,
-        ds = buf
+        ds = ds,
     )
 end
 
-function ahsm_mix(RT, mmix, theta, zeta0, zeta1, zeta2, zeta3)
-    imz3 = 1 - zeta3
-    Ahs = RT * mmix / zeta0 *
-        (3 * zeta1 * zeta2 / imz3 + zeta2^3 / (zeta3 * imz3^2) +
-        (zeta2^3 / zeta3^2 - zeta0) * log1p(-zeta3)) *
-        sqrt(imz3 / (1 - zeta3 / theta^3))
+function ahsm_mix(RT, mmix, θ, ζ₀, ζ₁, ζ₂, ζ₃)
+    # Polishuk 2014, Eq. 11
+    # In sqrt( ... ), definition of d = σ θ is used
+    onemζ₃ = 1 - ζ₃
+    Ahs = (
+        RT * mmix / ζ₀
+        * (
+            3 * ζ₁ * ζ₂ / onemζ₃
+            + ζ₂^3 / (ζ₃ * onemζ₃^2)
+            + (ζ₂^3 / ζ₃^2 - ζ₀) * log1p(-ζ₃)
+        ) * sqrt(onemζ₃ / (1 - ζ₃ / θ^3))
+    )
     return Ahs
 end
 
-function achain_mix(mix, nmol, RT, ds, zeta2, zeta3)
+function achain_mix(mix, nmol, RT, ds, ζ₂, ζ₃)
+    # Polishuk 2014, eq. 13
     comp = components(mix)
-    Achain = RT * sum(
-        nmol[i] * nmol[j] * (1 - (comp[i].mchain + comp[j].mchain)/2) *
-        log(rdfc(ds, i, j, zeta2, zeta3)) for i in eachindex(ds) for j in eachindex(ds)
-    )
-    Achain /= sum(nmol)
+
+    # TODO: zero(?)
+    Achain = 0.0
+    for (dᵢ, compᵢ, nmolᵢ) in zip(ds, comp, nmol),
+        (dⱼ, compⱼ, nmolⱼ) in zip(ds, comp, nmol)
+        radial = log(rdfc(dᵢ, dⱼ, ζ₂, ζ₃))
+
+        # Polishuk 2014, eq. 19
+        # TODO: correction is zero: perhaps need to add the matrix to `mix` definition
+        mij = (compᵢ.mchain + compⱼ.mchain)/2
+
+        Achain += nmolᵢ * nmolⱼ * (1 - mij) * radial
+    end
+    Achain /= sum(nmol)  # In the cycle the moles are squared
+    Achain *= RT
+
     return Achain
 end
 
-function rdfc(ds, i, j, zeta2, zeta3)
-    imz3 = 1 - zeta3
-    di, dj = ds[i], ds[j]
-    dm = di * dj * zeta2 / (imz3 * (di + dj))
-    return (1 + dm * (3 + 2 * dm))/ imz3
+function rdfc(di, dj, ζ₂, ζ₃)
+    # Polushuk, 2014, eq. 14
+    onemζ₃ = 1 - ζ₃
+    dm = di * dj * ζ₂ / (onemζ₃ * (di + dj))
+    return (1 + dm * (3 + 2 * dm)) / onemζ₃
 end
 
 function cp_pc_saft_Iterms(a, b, m)
@@ -131,7 +155,7 @@ function cp_pc_saft_Iterms(a, b, m)
 end
 
 function adispm_mix(vol, Tx, mmix, epsk, sigma, zeta3, aterms, bterms)
-    prefactor = -π * GAS_CONSTANT_SI * AVOGADRO * sigma^3 * 1e-30 / vol
+    prefactor = -π * CubicEoS.GAS_CONSTANT_SI * AVOGADRO * sigma^3 * 1e-30 / vol
     I1, I2 = evalpoly(zeta3, aterms), evalpoly(zeta3, bterms)
     I1term = 2 * I1 * epsk * mmix^2
     I2d = Tx * (1 + mmix * zeta3 * (8 - 2 * zeta3) / (1 - zeta3)^4 +
@@ -142,169 +166,22 @@ function adispm_mix(vol, Tx, mmix, epsk, sigma, zeta3, aterms, bterms)
     return prefactor * (I1term + I2term)
 end
 
-"""
-    log_c_activity(mixture, nmol, volume, RT[; buf])
+# CubicEoS interface
 
-Return vector of ln(c_a) - logarithm of activity coefficients
-for components of `mixture` at given `nmol`, `volume`, `RT`.
-If buffers are provided as keyword arguments, their contents
-are modified during the intermediate calculations.
-
-# Arguments
-
-- `mix`: mixture
-- `nmol::AbstractVector`: amount of each component (mol)
-- `volume`: volume of the mixture (m³)
-- `RT`: thermal energy (J/mol)
-
-# Keywords
-
-- `buf::Union{NamedTuple, AbstractDict, BrusilovskyThermoBuffer}`: buffers for intermediate
-    calculations (see [`pressure`](@ref))
-
-# Returns
-
-- `AbstractVector`: the logarithms of activity coefficients of the components at given
-    number of moles, volume and temperature
-
-See also: [`log_c_activity!`](@ref), [`log_c_activity_wj`](@ref), [`log_c_activity_wj!`](@ref)
-"""
-function log_c_activity(
-    mix::CPPCSAFTMixture,
-    nmol::AbstractVector,
-    volume::Real,
-    RT::Real;
-    buf = thermo_buffer(mix, nmol),
-)
-    Aexc(nmol) = exc_helmholtz(mix, nmol, volume, RT)
-    log_ca = ForwardDiff.gradient(Aexc, nmol)
-    log_ca ./= RT
-
-    return log_ca
-end
-
-"""
-    log_c_activity!(log_ca, mixture, nmol, volume, RT[; buf])
-
-Return vector of ln(c_a) - logarithm of activity coefficients
-for components of `mixture` at given `nmol`, `volume`, `RT`.
-If buffers are provided as keyword arguments, their contents
-are modified during the intermediate calculations. The answer is stored
-in `log_ca`.
-
-# Arguments
-
-- `log_ca::AbstractVector`: buffer to store the result
-- `mix::BrusilovskyEoSMixture`: mixture
-- `nmol::AbstractVector`: amount of each component (mol)
-- `volume`: volume of the mixture (m³)
-- `RT`: thermal energy (J/mol)
-
-# Keywords
-
-- `buf::Union{BrusilovskyThermoBuffer, NamedTuple, AbstractDict}`: buffers for intermediate
-    calculations (see [`pressure`](@ref))
-
-# Returns
-
-- `AbstractVector`: the logarithms of activity coefficients of the components at given
-    number of moles, volume and temperature
-
-See (Jirí Mikyska, Abbas Firoozabadi // 10.1002/aic.12387)
-
-See also: [`log_c_activity`](@ref), [`log_c_activity_wj`](@ref), [`log_c_activity_wj!`](@ref)
-"""
-function log_c_activity!(
+function CubicEoS.log_c_activity!(
     log_ca::AbstractVector,
     mix::CPPCSAFTMixture,
     nmol::AbstractVector,
     volume,
     RT;
-    buf = thermo_buffer(mix, nmol),
+    buf::SAFTThermoBuffer=thermo_buffer(mix, nmol),
 )
     Aexc(nmol) = exc_helmholtz(mix, nmol, volume, RT)
     log_ca .= ForwardDiff.gradient(Aexc, nmol) ./ RT
-
     return log_ca
 end
 
-"""
-    log_c_activity_wj(mixture, nmol, volume, RT[; buf])
-
-Return vector of ln(c_a) - logarithm of activity coefficient
-for components of `mixture` at given `nmol`, `volume`, `RT` -
-and the jacobian ∂ln(c_a[i]) / ∂n[j].
-If buffers are provided as keyword arguments, their contents
-are modified during the intermediate calculations.
-
-# Arguments
-
-- `mix`: mixture
-- `nmol::AbstractVector`: amount of each component (mol)
-- `volume`: volume of the mixture (m³)
-- `RT`: thermal energy (J/mol)
-
-# Keywords
-
-- `buf::BrusilovskyThermoBuffer`: buffers for intermediate calculations
-    (see [`thermo_buffer`](@ref))
-
-# Returns
-
-- `Tuple{AbstractVector,AbstractMatrix}`: the logarithms of activity coefficients
-of the components at given number of moles, volume and temperature, and the jacobian
-matrix ∂ln(c_a[i]) / ∂n[j].
-
-See also: [`log_c_activity`](@ref), [`log_c_activity!`](@ref), [`log_c_activity_wj!`](@ref)
-"""
-function log_c_activity_wj(
-    mix::CPPCSAFTMixture{T},
-    nmol::AbstractVector,
-    volume::Real,
-    RT::Real;
-    buf::SAFTThermoBuffer = thermo_buffer(mix, nmol),
-) where {T}
-    Aexc(nmol) = exc_helmholtz(mix, nmol, volume, RT)
-    log_ca = ForwardDiff.gradient(Aexc, nmol)
-    log_ca ./= RT
-    jacobian = ForwardDiff.hessian(Aexc, nmol)
-    jacobian ./= RT
-    return log_ca, jacobian
-end
-
-"""
-    log_activity_wj!(log_ca, jacobian, mixture, nmol, volume, RT[; buf])
-
-Return vector of ln(c_a) - logarithm of activity coefficient
-for components of `mixture` at given `nmol`, `volume`, `RT` -
-and the jacobian ∂ln(c_a[i]) / ∂n[j]. The first two arguments get overwritten
-by the result.
-If buffers are provided as keyword arguments, their contents
-are modified during the intermediate calculations.
-
-# Arguments
-
-- `log_ca::AbstractVector`: a vector to store the activity coefficients
-- `jacobian::AbstractMatrix`: a matrix to store ∂ln(c_a[i]) / ∂n[j]
-- `mix`: mixture
-- `nmol::AbstractVector`: amount of each component (mol)
-- `volume`: volume of the mixture (m³)
-- `RT`: thermal energy (J/mol)
-
-# Keywords
-
-- `buf::BrusilovskyThermoBuffer`: buffers for intermediate calculations
-    (see [`thermo_buffer`](@ref))
-
-# Returns
-
-- `Tuple{AbstractVector,AbstractMatrix}`: the logarithms of activity coefficients
-of the components at given number of moles, volume and temperature, and the jacobian
-matrix ∂ln(c_a[i]) / ∂n[j]. The values are aliases for the first two arguments.
-
-See also: [`log_c_activity`](@ref), [`log_c_activity!`](@ref), [`log_c_activity_wj`](@ref)
-"""
-function log_c_activity_wj!(
+function CubicEoS.log_c_activity_wj!(
     log_ca::AbstractVector,
     jacobian::AbstractMatrix,
     mix::CPPCSAFTMixture,
