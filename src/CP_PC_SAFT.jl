@@ -15,5 +15,6 @@ include("interface.jl")
 include("dbload.jl")
 include("basic_thermo.jl")
 include("chempotential.jl")
+include("vt_split.jl")
 
 end # module
