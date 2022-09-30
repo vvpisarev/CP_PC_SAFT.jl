@@ -32,4 +32,15 @@ end
     end
 end
 
+@testset "vt_split" begin
+    RTUnstable = CubicEoS.GAS_CONSTANT_SI * 300
+    _, _, trials = vt_stability(mixture, nmol, volume, RTUnstable;
+        tol=1e-6,
+        maxiter=1000,
+    )
+    conc = CubicEoS.concentrationwithlowesttpd(trials)
+    result = vt_split(mixture, nmol, volume, RTUnstable, conc, CubicEoS.VTSplitIdealIdentityState)
+    @test converged(result)
+end
+
 end # @testset
