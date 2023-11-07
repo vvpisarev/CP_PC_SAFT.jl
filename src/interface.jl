@@ -1,16 +1,9 @@
-components(m::CPPCSAFTMixture) = m.components
-name(m::CPPCSAFTMixture) = join(map(name, components(m)), " + ")
-describe(m::CPPCSAFTMixture) = Dict{String,Any}("noparameters" => NaN)
+CubicEoS.molar_mass(x::CPPCSAFTComponent) = x.molar_mass
+CubicEoS.name(x::CPPCSAFTComponent) = x.name
+CubicEoS.carbon_number(x::CPPCSAFTComponent) = x.carbon_number
 
-function describe(x::CPPCSAFTComponent)
-    return Dict{String,Any}(
-        "data structure" => repr(x),
-        "name" => name(x),
-        "critical pressure [Pa]" => x.Pc,
-        "critical temperature [K]" => x.RTc / GAS_CONSTANT_SI,
-        "pitzer acentric factor" => x.acentric_factor,
-        "molar mass [kg mol⁻¹]" => x.molar_mass,
-        "number of carbons atoms" => x.carbon_number,
-        "eos" => "MBWR (propane as reference)",
-    )
-end
+Base.show(io::IO, x::CPPCSAFTMixture) = print(io, "CPPCSAFTMixture($(CubicEoS.name(x)))")
+CubicEoS.components(x::CPPCSAFTMixture) = x.components
+CubicEoS.ncomponents(x::CPPCSAFTMixture) = length(components(x))
+CubicEoS.thermo_buffer(x::CPPCSAFTMixture) = SAFTThermoBuffer(x)
+CubicEoS.thermo_buffer(x::CPPCSAFTMixture, nmol) = SAFTThermoBuffer(x, nmol)

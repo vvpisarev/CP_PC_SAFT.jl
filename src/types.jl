@@ -1,8 +1,3 @@
-using CubicEoS: NothingOrT
-import CubicEoS: AbstractEoSComponent, AbstractEoSMixture, AbstractEoSThermoBuffer
-
-import CubicEoS: name, components, describe, carbon_number, molar_mass
-
 struct CPPCSAFTComponent{T<:Number} <: CubicEoS.AbstractEoSComponent
     # meta information
     name::String
@@ -13,6 +8,7 @@ struct CPPCSAFTComponent{T<:Number} <: CubicEoS.AbstractEoSComponent
     RTc::T   # R * critical temperature
     Zc::T # critical Z-factor
     molar_mass::T  # [kg mol⁻¹] molar mass
+    # TODO: Why Int16 hacking? Are we in 1990s?
     carbon_number::Int16  # [dimless] number of carbons
     mchain::T
     epsk::T # ε / k [K]
@@ -34,7 +30,7 @@ struct CPPCSAFTComponent{T<:Number} <: CubicEoS.AbstractEoSComponent
         delta::Number=1.0,
         kw...
     ) where {T}
-        RTc = GAS_CONSTANT_SI * critical_temperature
+        RTc = CubicEoS.GAS_CONSTANT_SI * critical_temperature
         new{T}(
             name,
             critical_pressure,
@@ -53,35 +49,19 @@ end
 
 CPPCSAFTComponent(; x...) = CPPCSAFTComponent{Float64}(; x...)
 
-Base.eltype(::CPPCSAFTComponent{T}) where {T} = T
 
-for func in (:molar_mass, :name, :acentric_factor, :carbon_number)
-    expr = :($(func)(c::CPPCSAFTComponent) = getfield(c, $(QuoteNode(func))))
-    eval(expr)
-    eval(:(export $func))
-end
-
-#=
-Mixture
-=#
-
-struct CPPCSAFTMixture{T} <: CubicEoS.AbstractEoSMixture
+struct CPPCSAFTMixture{T} <: CubicEoS.AbstractEoSMixture{T}
     components::Vector{CPPCSAFTComponent{T}}
-
     kij::Matrix{T} # binary interaction coefficient
 
-    function CPPCSAFTMixture(
-        ;
-        components::AbstractVector{CPPCSAFTComponent{T}},
-        kij::NothingOrT{AbstractMatrix}=nothing,
-        kw...
+    function CPPCSAFTMixture(components::AbstractVector{CPPCSAFTComponent{T}};
+        kij::AbstractMatrix=zeros(T, length(components), length(components)),
     ) where {T}
-        nc = length(components)
-        kmatr = kij === nothing ? zeros(T, nc, nc) : kij
-        new{T}(components, kmatr)
+        return new{T}(components, kij)
     end
 end
 
+# TODO: Where do we use this?
 @inline Base.@propagate_inbounds function Base.getindex(
     mix::CPPCSAFTMixture,
     i::Integer
@@ -118,14 +98,3 @@ function SAFTThermoBuffer(mix::CPPCSAFTMixture{Tm}, nmol::AbstractVector{Tn}) wh
     T = promote_type(Tm, Tn)
     return SAFTThermoBuffer{T}(nc)
 end
-
-"""
-    thermo_buffer(mix[, nmol])
-
-Create a buffer for intermediate calculations of mixture thermodynamic properties.
-
-See also: [`pressure`](@ref), [`log_c_activity`](@ref), [`log_c_activity!`](@ref),
-[`log_c_activity_wj`](@ref), [`log_c_activity_wj!`](@ref)
-"""
-thermo_buffer(mix::CPPCSAFTMixture) = SAFTThermoBuffer(mix)
-thermo_buffer(mix::CPPCSAFTMixture, nmol) = SAFTThermoBuffer(mix, nmol)
