@@ -1,7 +1,7 @@
 name = "CP_PC_SAFT"
 uuid = "b56466a3-4a2d-4b3b-ae86-b73c87eb4959"
-authors = ["Vasily Pisarev"]
-version = "0.1.0"
+authors = ["Vasily Pisarev", "Stepan Zakharov"]
+version = "0.2.0"
 
 [deps]
 CubicEoS = "0772a1fa-d924-41f2-9f07-889679823dc5"
