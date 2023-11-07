@@ -12,19 +12,27 @@ The package defines necessary interface to be used with solvers from [CubicEoS.j
 
 ## MWE
 
-```julia-repl
-julia> using CubicEoS
-julia> using CP_PC_SAFT
-julia> c1c5 = CubicEoS.load(CPPCSAFTMixture; names=("methane", "n-pentane"))
-CPPCSAFTMixture(methane + n-pentane)
+Pressure of mixture of methane (0.8) and normal pentane (0.2) in following conditions
 
-julia> molfrac, V, RT = [0.8, 0.2], 1e-6, 300 * CubicEoS.GAS_CONSTANT_SI
-([0.8, 0.2], 1.0e-6, 2494.338785445972)
+- `temperature = 300 Kelvins`
+- `volume = 1 cubic centimeter`
+- `concentration = 10000 mole/cubic meter`.
 
-julia> nmol = 10000 * V * molfrac
-2-element Vector{Float64}:
- 0.008
- 0.002
+```julia
+using CubicEoS
+using CP_PC_SAFT
 
-julia> pressure(c1c5, nmol, V, RT)
+c1c5 = CubicEoS.load(CPPCSAFTMixture; names=("methane", "n-pentane"))
+# CPPCSAFTMixture(methane + n-pentane)
+
+molfrac, V, RT = [0.8, 0.2], 1e-6, 300 * CubicEoS.GAS_CONSTANT_SI
+# ([0.8, 0.2], 1.0e-6, 2494.338785445972)
+
+nmol = 10000 * V * molfrac
+# 2-element Vector{Float64}:
+#  0.008
+#  0.002
+
+pressure(c1c5, nmol, V, RT)
+# 1.2332733885731127e7
 ```
