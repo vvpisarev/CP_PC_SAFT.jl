@@ -1,5 +1,5 @@
 function exc_helmholtz(mix::CPPCSAFTMixture, nmol, vol, RT;
-    buf=thermo_buffer(mix, nmol),
+    buf=SAFTThermoBuffer(mix, nmol, vol, RT),
 )
     Tx = RT / CubicEoS.GAS_CONSTANT_SI
     ntotal = sum(nmol)
@@ -194,4 +194,20 @@ function CubicEoS.log_c_activity_wj!(
     log_ca .= ForwardDiff.gradient(Aexc, nmol) ./ RT
     jacobian .= ForwardDiff.hessian(Aexc, nmol) ./ RT
     return log_ca, jacobian
+end
+
+"""
+exc_entropy(mix::CPPCSAFTMixture, nmol, vol, RT; buf=SAFTThermoBuffer(mix, nmol, vol, RT))
+
+Return the excess molar entropy for `mix` in the units of the gas constant R.
+"""
+function exc_entropy(mix::CPPCSAFTMixture, nmol, vol, RT;
+    buf=SAFTThermoBuffer(mix, nmol, vol, RT),
+)
+    sum_mols = sum(nmol)
+    A(RT) = exc_helmholtz(mix, nmol, vol, RT; buf)
+
+    s_exc = ForwardDiff.derivative(A, RT)
+
+    return s_exc / sum_mols
 end

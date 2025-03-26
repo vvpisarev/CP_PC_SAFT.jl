@@ -98,3 +98,16 @@ function SAFTThermoBuffer(mix::CPPCSAFTMixture{Tm}, nmol::AbstractVector{Tn}) wh
     T = promote_type(Tm, Tn)
     return SAFTThermoBuffer{T}(nc)
 end
+
+function SAFTThermoBuffer(
+    mix::CPPCSAFTMixture{Tm},
+    nmol::AbstractVector{Tn},
+    vol::Tv,
+    RT::Tt
+) where {Tm, Tn, Tv, Tt}
+    nc = ncomponents(mix)
+    nc == length(nmol) ||
+        throw(DimensionMismatch("Number of mixture components is not equal to the length of moles vector"))
+    T = promote_type(Tm, Tn, Tv, Tt)
+    return SAFTThermoBuffer{T}(nc)
+end
