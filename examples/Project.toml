@@ -1,0 +1,14 @@
+name = "CP_PC_SAFT_examples"
+uuid = "8f3e4c2a-9b1d-4e7f-a6c5-2d8f1b9e4a70"
+authors = ["Vasily Pisarev", "Stepan Zakharov"]
+
+[deps]
+CP_PC_SAFT = "b56466a3-4a2d-4b3b-ae86-b73c87eb4959"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+CubicEoS = "0772a1fa-d924-41f2-9f07-889679823dc5"
+
+[sources]
+CP_PC_SAFT = {path = ".."}
+
+[compat]
+CairoMakie = "0.15"

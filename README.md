@@ -36,3 +36,9 @@ nmol = 10000 * V * molfrac
 pressure(c1c5, nmol, V, RT)
 # 1.2332733885731127e7
 ```
+
+
+## Examples
+
+Runnable example scripts with their own environments live in [`examples/`](examples/),
+see [`examples/README.md`](examples/README.md) for details.
