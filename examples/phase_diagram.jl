@@ -177,8 +177,8 @@ function compute_binodal()
         key = (round(Int, x * 2e5), round(Int, y * 2e5), round(Int, P / 5e2))
         key in seen && continue
         push!(seen, key)
-        push!(bubble, (x, P / 1e5))
-        push!(dew, (y, P / 1e5))
+        push!(bubble, (P / 1e5, x))
+        push!(dew, (P / 1e5, y))
     end
 
     sort!(bubble; by=first)
@@ -195,11 +195,11 @@ function plot_binodal(bubble, dew; outfile="phase_diagram.$(TEMPERATURE)K.png")
     ax = Axis(fig[1, 1];
         xlabel="CO₂ mole fraction",
         ylabel="Pressure (bar)",
-        title="CO₂ + n-decane, CP-PC-SAFT, T = $(TEMPERATURE) K",
+        title="CO₂ + n-decane, CP-PC-SAFT, T = $(TEMPERATURE) K, k_ij = $(K_IJ)",
         limits=(0, 1, 0, nothing))
 
-    bx = first.(bubble); bP = last.(bubble)
-    dy = first.(dew);    dP = last.(dew)
+    bx = [x for (P, x) in bubble]; bP = [P for (P, x) in bubble]
+    dy = [y for (P, y) in dew];    dP = [P for (P, y) in dew]
 
     # Liquid branch: bubble point, P vs x(CO2).
     lines!(ax, bx, bP; color=:steelblue, linewidth=2.5,
