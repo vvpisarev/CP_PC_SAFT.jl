@@ -63,3 +63,20 @@ The script is organised into three cells (VSCode `# %%` format):
    `plot_binodal`.
 3. **Main run** — `main()` plus the `PROGRAM_FILE` guard so the script can be
    executed directly or included from a REPL session.
+
+## `c1c5/c1c5_binodal.jl`
+
+Boundary curve of the **50:50 wt% methane + n-pentane** mixture ("C1C5") from
+Podnek et al. (2020), computed with CP-PC-SAFT by scanning temperature at the
+series of densities reported in the paper, with a sweep over the binary
+interaction coefficient `k_ij`. It has its own environment in
+[`c1c5/`](c1c5/); see [`c1c5/README.md`](c1c5/README.md) for details.
+
+```bash
+cd c1c5
+julia --project=. c1c5_binodal.jl
+```
+
+Outputs `c1c5_binodal.txt` (computed points for every `k_ij`) and
+`c1c5_phase_diagram.png` (the `k_ij` sweep together with the experimental
+reference points and critical points from the paper).

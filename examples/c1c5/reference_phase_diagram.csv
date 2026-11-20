@@ -1,0 +1,88 @@
+# Reference phase diagram of the 50:50 wt% methane + n-pentane mixture ("C1C5")
+# from the experimental boundary curve (pogranichnaya krivaya) reported in:
+#
+#   Podnek V.E., Voronov V.P., Kiyachenko Yu.F., Sirota A.S.
+#   "Comparative analysis of the efficiency of optical and calorimetric methods
+#    for studying the near-critical state of hydrocarbon mixtures"
+#   Actual Problems of Oil and Gas, 2020, Iss. 4(31), pp. 37-61.
+#   https://doi.org/10.29222/ipng.2078-5712.2020-31.art4
+#
+# Data are transcribed from Appendix Tables P1 (optics, near-critical),
+# P3 (optics, outside the near-critical region) and P2 (adiabatic calorimetry).
+# "isochore" is the isochore number in the corresponding table.
+# Empty fields mean "not reported" (Table P3 reports only T and P for
+# isochores 30-50, and no data for isochores 29, 31, 33, 34).
+source,isochore,T_C,P_MPa,rho_g_cm3
+optics,1,-2.06,14.96,0.337
+optics,2,0.48,15.13,0.332
+optics,3,3.06,15.29,0.327
+optics,4,5.51,15.43,0.324
+optics,5,7.98,15.56,0.319
+optics,6,10.43,15.69,0.315
+optics,7,12.75,15.78,0.310
+optics,8,15.56,15.89,0.305
+optics,9,17.83,15.97,0.301
+optics,10,20.20,16.05,0.297
+optics,11,22.54,16.12,0.293
+optics,12,24.81,16.17,0.288
+optics,13,27.08,16.23,0.285
+optics,14,29.29,16.26,0.281
+optics,15,31.50,16.29,0.277
+optics,16,33.62,16.31,0.273
+optics,17,35.79,16.32,0.269
+optics,18,37.85,16.33,0.265
+optics,19,39.91,16.33,0.261
+optics,20,41.89,16.33,0.258
+optics,21,43.91,16.31,0.254
+optics,22,45.94,16.29,0.249
+optics,23,49.83,16.22,0.242
+optics,24,53.53,16.14,0.235
+optics_extended,25,57.04,16.03,0.228
+optics_extended,26,60.35,15.90,0.220
+optics_extended,27,63.60,15.73,0.214
+optics_extended,28,67.06,15.54,0.206
+optics_extended,30,71.15,15.37,
+optics_extended,32,73.93,15.05,
+optics_extended,35,76.94,14.79,
+optics_extended,36,80.37,14.43,
+optics_extended,37,82.32,14.22,
+optics_extended,38,86.95,13.60,
+optics_extended,39,90.86,12.94,
+optics_extended,40,94.71,12.28,
+optics_extended,41,97.53,11.58,
+optics_extended,42,99.92,10.62,
+optics_extended,43,101.17,9.92,
+optics_extended,44,101.86,9.27,
+optics_extended,45,101.91,8.41,
+optics_extended,46,101.90,7.73,
+optics_extended,47,101.10,7.04,
+optics_extended,48,99.89,6.41,
+optics_extended,49,98.30,5.77,
+optics_extended,50,94.93,5.06,
+calorimetry,1,-6.57,14.71,0.346
+calorimetry,2,-3.06,14.96,0.339
+calorimetry,3,1.05,15.23,0.332
+calorimetry,4,4.53,15.43,0.327
+calorimetry,5,7.24,15.57,0.323
+calorimetry,6,10.27,15.71,0.317
+calorimetry,7,12.36,15.81,0.314
+calorimetry,8,14.30,15.88,0.310
+calorimetry,9,16.06,15.95,0.308
+calorimetry,10,18.99,16.05,0.302
+calorimetry,11,19.70,16.07,0.301
+calorimetry,12,22.17,16.14,0.296
+calorimetry,13,26.18,16.23,0.289
+calorimetry,14,31.52,16.32,0.278
+calorimetry,15,39.30,16.35,0.264
+calorimetry,16,45.85,16.30,0.252
+calorimetry,17,53.99,16.12,0.238
+calorimetry,18,63.47,15.75,0.219
+calorimetry,19,71.72,15.24,0.202
+calorimetry,20,79.73,14.55,0.185
+calorimetry,21,86.65,13.65,0.166
+calorimetry,22,95.08,12.45,0.146
+calorimetry,23,98.99,11.32,0.130
+calorimetry,24,101.80,10.33,0.120
+calorimetry,25,103.70,8.66,0.101
+calorimetry,26,103.82,7.43,0.085
+calorimetry,27,102.12,6.08,0.071
